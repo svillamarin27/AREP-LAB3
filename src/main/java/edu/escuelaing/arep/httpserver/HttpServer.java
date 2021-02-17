@@ -1,63 +1,127 @@
 package edu.escuelaing.arep.httpserver;
+import org.apache.commons.io.FilenameUtils;
 
+import java.net.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.io.*;
 import java.net.*;
 import java.io.*;
 
 public class HttpServer {
-	  public static void main(String[] args) throws IOException {
-		   ServerSocket serverSocket = null;
-		   try { 
-		      serverSocket = new ServerSocket(getport());
+	static ServerSocket serverSocket ;
+	static Socket clientSocket;
+
+	static PrintWriter salida;
+	static BufferedReader entrada;
+
+
+  public static void main(String[] args) throws IOException {
+
+	   serverSocket = null;
+	   try { 
+	      serverSocket = new ServerSocket(getPort());
+	   } catch (IOException e) {
+	      System.err.println("No es posible escuchar el puerto: 36000.");
+	      System.exit(1);
+	   }
+	   while(true) {
+
+		   try {
+		       System.out.println("Listo para recibir ...");
+		       clientSocket = serverSocket.accept();
 		   } catch (IOException e) {
-			   System.err.println("Could not listen on port: 35000.");
-			   System.exit(1);
+		       System.err.println("Accept failed.");
+		       System.exit(1);
 		   }
-		   
-		   boolean running = true;
-		   while(running) {
-		   
-			   Socket clientSocket = null;
-			   try {
-			       System.out.println("Listo para recibir ...");
-			       clientSocket = serverSocket.accept();
-			   } catch (IOException e) {
-			       System.err.println("Accept failed.");
-			       System.exit(1);
-			   }
-			   PrintWriter out = new PrintWriter(
-			                         clientSocket.getOutputStream(), true);
-			   BufferedReader in = new BufferedReader(
-			                         new InputStreamReader(clientSocket.getInputStream()));
-			   String inputLine, outputLine;
-			   while ((inputLine = in.readLine()) != null) {
-			      System.out.println("Recib�: " + inputLine);
-			      if (!in.ready()) {break; }
-			   }
-			   outputLine = "HTTP/1.1 200 OK\r\n"
-				        + "Content-Type: text/html\r\n"
-				         + "\r\n"
-				         + "<!DOCTYPE html>\n"
-				         + "<html>\n"
-				         + "<head>\n"
-				         + "<meta charset=\"UTF-8\">\n"
-				         + "<title>Title of the document</title>\n"
-				         + "</head>\n"
-				         + "<body>\n"
-				         + "<h1>Mi propio mensaje</h1>\n"
-				         + "</body>\n"
-				         + "</html>\n";
-			    out.println(outputLine);
-			    out.close(); 
-			    in.close(); 
-			    clientSocket.close(); 
+
+		   salida= new PrintWriter(clientSocket.getOutputStream(), true);
+		   entrada = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		   String inputLine, outputLine;
+
+		   StringBuilder stringBuilder = new StringBuilder();
+
+		   Pattern pattern = Pattern.compile("GET /([^\\s]+)");
+	       Matcher matcher = null;
+
+		   while ((inputLine = entrada.readLine()) != null) {
+		      System.out.println("Recibí: " + inputLine);
+		      stringBuilder.append(inputLine);
+		      if (!entrada.ready()) {
+		    	  matcher = pattern.matcher(stringBuilder.toString());
+	              if (matcher.find()) {
+	                  String req = matcher.group().substring(5);
+	                  System.out.println("VALUE: " + req);
+	                  returnRequest(req);
+	              }
+		    	  break; 
+		      }
 		   }
-		    serverSocket.close(); 
+
+		    salida.close(); 
+		    entrada.close(); 
+		    clientSocket.close(); 
+	   }
   }
 
-	private static int getport() {
-		if (System.getenv("PORT") != null) {
-            return Integer.parseInt(System.getenv("PORT"));
-        }
-        return 36000; //returns default port if heroku-port isn't set (i.e. on localhost)
-	}
+  /**
+     * Retorna lo solicitado en el path 
+     *
+     * @param req archivo solicitado
+     */
+  public static void returnRequest(String req) throws IOException {
+
+	  String path = "src/main/resources/";
+      String ext = FilenameUtils.getExtension(req);
+      System.out.println("Extención: "+ext);
+
+      if (ext.equals("jpg") || ext.equals("png")) {
+    	  path+="img/";
+      }
+
+      System.out.println("Ruta del recurso: "+path+req);
+      File file = new File(path+req);
+
+      if (file.exists() && !file.isDirectory()) {
+	      if (ext.equals("jpg") || ext.equals("png")) {
+
+				FileInputStream fis = new FileInputStream(file);
+				byte[] data = new byte[(int) file.length()];
+				fis.read(data);
+				fis.close();
+
+				
+				DataOutputStream binaryOut = new DataOutputStream(clientSocket.getOutputStream());
+				binaryOut.writeBytes("HTTP/1.0 200 OK\r\n");
+				binaryOut.writeBytes("Content-Type: image/"+ext+"\r\n");
+				binaryOut.writeBytes("Content-Length: " + data.length);
+				binaryOut.writeBytes("\r\n\r\n");
+				binaryOut.write(data);
+
+				binaryOut.close();
+
+	      } else {
+	    	  salida.println("HTTP/1.1 200 \r\nContent-Type: text/html\r\n\r\n");
+	    	  BufferedReader br = new BufferedReader(new FileReader(file));
+	    	  StringBuilder stringBuilder = new StringBuilder();
+	          String st;
+
+	          while ((st = br.readLine()) != null) {
+	              stringBuilder.append(st);
+	          }
+
+	          salida.println(stringBuilder.toString());
+	          br.close();
+	      }
+      } else {
+    	  salida.println("HTTP/1.1 404 \r\n\r\n<html><body><h1>ERROR 404: NOT FOUND</h1></body></html>");
+      }
+  }
+
+  static int getPort() {
+      if (System.getenv("PORT") != null) {
+          return Integer.parseInt(System.getenv("PORT"));
+      }        
+      return 4567;
+  }
 }
