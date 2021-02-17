@@ -9,8 +9,8 @@ import java.net.*;
 import java.io.*;
 
 public class HttpServer {
-	static ServerSocket serverSocket ;
-	static Socket clientSocket;
+	static ServerSocket serverSocket = null ;
+	static Socket clientSocket = null;
 
 	static PrintWriter salida;
 	static BufferedReader entrada;
