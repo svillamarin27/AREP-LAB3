@@ -8,14 +8,31 @@ import java.io.*;
 import java.net.*;
 import java.io.*;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class HttpServer.
+ */
 public class HttpServer {
+	
+	/** The server socket. */
 	static ServerSocket serverSocket = null ;
+	
+	/** The client socket. */
 	static Socket clientSocket = null;
 
+	/** The salida. */
 	static PrintWriter salida;
+	
+	/** The entrada. */
 	static BufferedReader entrada;
 
 
+  /**
+   * The main method.
+   *
+   * @param args the arguments
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public static void main(String[] args) throws IOException {
 
 	   serverSocket = null;
@@ -65,10 +82,11 @@ public class HttpServer {
   }
 
   /**
-     * Retorna lo solicitado en el path 
-     *
-     * @param req archivo solicitado
-     */
+   * Retorna lo solicitado en el path .
+   *
+   * @param req archivo solicitado
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public static void returnRequest(String req) throws IOException {
 
 	  String path = "src/main/resources/";
@@ -118,6 +136,11 @@ public class HttpServer {
       }
   }
 
+  /**
+   * Gets the port.
+   *
+   * @return the port
+   */
   static int getPort() {
       if (System.getenv("PORT") != null) {
           return Integer.parseInt(System.getenv("PORT"));
